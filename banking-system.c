@@ -617,7 +617,54 @@ int login() {
     }
 }
 
+// Function to deposit money
+void depositMoney(int index) {
+    float amount;
+    printf("\n--- Deposit ---\n");
+    printf("Enter amount to deposit: ");
+    scanf("%f", &amount);
+    if (amount <= 0) {
+        printf("Error: Amount must be positive.\n");
+        waitForEnter();
+        return;
+    }
+    accounts[index].balance += amount;
+    saveAccountsToFile();
+    logTransaction(accounts[index].accountNumber, "Deposit", amount);
+    printf("Deposit successful. New Balance: %.2f\n", accounts[index].balance);
+    waitForEnter();
+}
 
+// Function to withdraw money
+void withdrawMoney(int index) {
+    float amount;
+    printf("\n--- Withdraw ---\n");
+    printf("Enter amount to withdraw: ");
+    scanf("%f", &amount);
+    if (amount <= 0) {
+        printf("Error: Amount must be positive.\n");
+    } else if (amount > accounts[index].balance) {
+        printf("Error: Insufficient balance.\n");
+    } else {
+        accounts[index].balance -= amount;
+        saveAccountsToFile();
+        logTransaction(accounts[index].accountNumber, "Withdraw", amount);
+        printf("Withdrawal successful. New Balance: %.2f\n", accounts[index].balance);
+    }
+    waitForEnter();
+}
+
+// Function to check balance
+void checkBalance(int index) {
+    printf("\n--- Balance Inquiry ---\n");
+    printf("Account Number: %d\n", accounts[index].accountNumber);
+    printf("Name: %s\n", accounts[index].name);
+    printf("Current Balance: %.2f\n", accounts[index].balance);
+    printf("Loan Amount: %.2f\n", accounts[index].loanAmount);
+    printf("Total Interest Earned: %.2f\n", accounts[index].interest);
+    printf("Last Login: %s\n", accounts[index].lastLogin ? getTimeString(accounts[index].lastLogin) : "Never");
+    waitForEnter();
+}
 
 // Function to update account details
 void updateDetails(int index) {
