@@ -66,6 +66,52 @@ int transactionCount = 0;
 int rateHistoryCount = 0;
 int loginHistoryCount = 0;
 
+// Function to clear input buffer
+void clearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+// Helper function to validate string input
+int isValidString(const char* str, int maxLen) {
+    int len = strlen(str);
+    if (len == 0 || len >= maxLen) return 0;
+    for (int i = 0; i < len; i++) {
+        if (!isprint(str[i])) return 0;
+    }
+    return 1;
+}
+
+// Function to validate phone number
+int isValidPhone(const char* phone) {
+    int len = strlen(phone);
+    if (len < MIN_PHONE_LEN || len > MAX_PHONE_LEN) {
+        return 0;
+    }
+    for (int i = 0; i < len; i++) {
+        if (!isdigit(phone[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// Function to validate password strength
+int isStrongPassword(const char* password) {
+    int len = strlen(password);
+    if (len < MIN_PASSWORD_LEN || len > MAX_PASSWORD_LEN) {
+        return 0;
+    }
+    int hasUpper = 0, hasLower = 0, hasDigit = 0, hasSpecial = 0;
+    for (int i = 0; i < len; i++) {
+        if (isupper(password[i])) hasUpper = 1;
+        else if (islower(password[i])) hasLower = 1;
+        else if (isdigit(password[i])) hasDigit = 1;
+        else hasSpecial = 1;
+    }
+    return hasUpper && hasLower && hasDigit && hasSpecial;
+}
+
 // Function to view login history
 void viewLoginHistory() {
     FILE* fp = fopen("login_history.txt", "r");
