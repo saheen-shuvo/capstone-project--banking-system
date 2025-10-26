@@ -227,6 +227,163 @@ void loadAccountsFromFile() {
     }
 }
 
+// Function to log a transaction
+void logTransaction(int accNo, const char* type, float amount) {
+    if (transactionCount >= MAX_TRANSACTIONS) {
+        printf("Error: Transaction limit reached.\n");
+        return;
+    }
+    Transaction t;
+    t.accountNumber = accNo;
+    strncpy(t.type, type, sizeof(t.type) - 1);
+    t.type[sizeof(t.type) - 1] = '\0';
+    t.amount = amount;
+    t.timestamp = time(NULL);
+    transactions[transactionCount++] = t;
+
+    FILE* fp = fopen("transactions.txt", "a");
+    if (fp == NULL) {
+        printf("Error: Cannot open transactions file.\n");
+        return;
+    }
+    fprintf(fp, "Acc#%d | %s | %.2f | %s\n", accNo, type, amount, getTimeString(t.timestamp));
+    fclose(fp);
+}
+
+// Function to filter transactions by date
+void filterTransactionsByDate(int accNo, time_t start, time_t end) {
+    FILE* fp = fopen("transactions.txt", "r");
+    if (!fp) {
+        printf("No transaction history found.\n");
+        waitForEnter();
+        return;
+    }
+    printf("\n--- Transactions for Acc#%d from %s to %s ---\n", accNo, getTimeString(start), getTimeString(end));
+    char line[200];
+    char accStr[20];
+    sprintf(accStr, "Acc#%d", accNo);
+    int found = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (strstr(line, accStr)) {
+            char* timestampStr = strrchr(line, '|');
+            if (timestampStr) {
+                timestampStr += 2; // Skip "| "
+                // Parse the timestamp manually
+                struct tm tm = {0};
+                // Expected format: "Wed Apr 12 14:30:00 2023"
+                int day, year;
+                char monthStr[4];
+                int hour, min, sec;
+                if (sscanf(timestampStr, "%*s %s %d %d:%d:%d %d", monthStr, &day, &hour, &min, &sec, &year) != 6) {
+                    continue; // Skip invalid timestamp
+                }
+                tm.tm_year = year - 1900;
+                tm.tm_mday = day;
+                tm.tm_hour = hour;
+                tm.tm_min = min;
+                tm.tm_sec = sec;
+                // Map month string to number
+                if (strcmp(monthStr, "Jan") == 0) tm.tm_mon = 0;
+                else if (strcmp(monthStr, "Feb") == 0) tm.tm_mon = 1;
+                else if (strcmp(monthStr, "Mar") == 0) tm.tm_mon = 2;
+                else if (strcmp(monthStr, "Apr") == 0) tm.tm_mon = 3;
+                else if (strcmp(monthStr, "May") == 0) tm.tm_mon = 4;
+                else if (strcmp(monthStr, "Jun") == 0) tm.tm_mon = 5;
+                else if (strcmp(monthStr, "Jul") == 0) tm.tm_mon = 6;
+                else if (strcmp(monthStr, "Aug") == 0) tm.tm_mon = 7;
+                else if (strcmp(monthStr, "Sep") == 0) tm.tm_mon = 8;
+                else if (strcmp(monthStr, "Oct") == 0) tm.tm_mon = 9;
+                else if (strcmp(monthStr, "Nov") == 0) tm.tm_mon = 10;
+                else if (strcmp(monthStr, "Dec") == 0) tm.tm_mon = 11;
+                else continue; // Invalid month
+                time_t txTime = mktime(&tm);
+                if (txTime >= start && txTime <= end) {
+                    printf("%s", line);
+                    found = 1;
+                }
+            }
+        }
+    }
+    if (!found) {
+        printf("No transactions found in this date range.\n");
+    }
+    fclose(fp);
+    waitForEnter();
+}
+
+// Function to filter transactions by type
+void filterTransactionsByType(int accNo, const char* type) {
+    FILE* fp = fopen("transactions.txt", "r");
+    if (!fp) {
+        printf("No transaction history found.\n");
+        waitForEnter();
+        return;
+    }
+    printf("\n--- %s Transactions for Acc#%d ---\n", type, accNo);
+    char line[200];
+    char accStr[20];
+    sprintf(accStr, "Acc#%d", accNo);
+    int found = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (strstr(line, accStr) && strstr(line, type)) {
+            printf("%s", line);
+            found = 1;
+        }
+    }
+    if (!found) {
+        printf("No %s transactions found.\n", type);
+    }
+    fclose(fp);
+    waitForEnter();
+}
+
+// Function to show transaction summary
+void showTransactionSummary(int accNo) {
+    FILE* fp = fopen("transactions.txt", "r");
+    if (!fp) {
+        printf("No transaction history found.\n");
+        waitForEnter();
+        return;
+    }
+    float totalDeposits = 0, totalWithdrawals = 0, totalInterest = 0, totalLoans = 0, totalRepayments = 0;
+    int depositCount = 0, withdrawalCount = 0, interestCount = 0, loanCount = 0, repaymentCount = 0;
+    char line[200];
+    char accStr[20];
+    sprintf(accStr, "Acc#%d", accNo);
+
+    while (fgets(line, sizeof(line), fp)) {
+        if (strstr(line, accStr)) {
+            float amount;
+            sscanf(line, "Acc#%*d | %*s | %f |", &amount);
+            if (strstr(line, "Deposit")) {
+                totalDeposits += amount;
+                depositCount++;
+            } else if (strstr(line, "Withdraw")) {
+                totalWithdrawals += amount;
+                withdrawalCount++;
+            } else if (strstr(line, "Interest Applied")) {
+                totalInterest += amount;
+                interestCount++;
+            } else if (strstr(line, "Loan Taken")) {
+                totalLoans += amount;
+                loanCount++;
+            } else if (strstr(line, "Loan Repayment")) {
+                totalRepayments += amount;
+                repaymentCount++;
+            }
+        }
+    }
+
+    printf("\n--- Transaction Summary for Acc#%d ---\n", accNo);
+    printf("Total Deposits    : %.2f (%d transactions)\n", totalDeposits, depositCount);
+    printf("Total Withdrawals : %.2f (%d transactions)\n", totalWithdrawals, withdrawalCount);
+    printf("Total Interest    : %.2f (%d applications)\n", totalInterest, interestCount);
+    printf("Total Loans Taken : %.2f (%d loans)\n", totalLoans, loanCount);
+    printf("Total Repayments  : %.2f (%d repayments)\n", totalRepayments, repaymentCount);
+    fclose(fp);
+    waitForEnter();
+}
+
 
 // Function to close an account
 void closeAccount(int index) {
