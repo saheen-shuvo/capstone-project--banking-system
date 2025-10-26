@@ -384,6 +384,239 @@ void showTransactionSummary(int accNo) {
     waitForEnter();
 }
 
+// Function to display transaction history with options
+void showTransactionHistory(int accNo) {
+    int choice;
+    do {
+        printf("\n--- Transaction History Menu for Acc#%d ---\n", accNo);
+        printf("1. View All Transactions\n");
+        printf("2. Filter by Date Range\n");
+        printf("3. Filter by Transaction Type\n");
+        printf("4. View Transaction Summary\n");
+        printf("5. Back\n");
+        printf("Choose an option: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: {
+                FILE* fp = fopen("transactions.txt", "r");
+                if (!fp) {
+                    printf("No transaction history found.\n");
+                    waitForEnter();
+                    break;
+                }
+                printf("\n--- All Transactions for Acc#%d ---\n", accNo);
+                char line[200];
+                char accStr[20];
+                sprintf(accStr, "Acc#%d", accNo);
+                int found = 0;
+                while (fgets(line, sizeof(line), fp)) {
+                    if (strstr(line, accStr)) {
+                        printf("%s", line);
+                        found = 1;
+                    }
+                }
+                if (!found) {
+                    printf("No transactions found for this account.\n");
+                }
+                fclose(fp);
+                waitForEnter();
+                break;
+            }
+            case 2: {
+                char startDate[20], endDate[20];
+                printf("Enter start date (YYYY-MM-DD): ");
+                scanf("%s", startDate);
+                printf("Enter end date (YYYY-MM-DD): ");
+                scanf("%s", endDate);
+                struct tm startTm = {0}, endTm = {0};
+                if (!parseDate(startDate, &startTm) || !parseDate(endDate, &endTm)) {
+                    printf("Error: Invalid date format. Use YYYY-MM-DD.\n");
+                    waitForEnter();
+                    break;
+                }
+                time_t start = mktime(&startTm);
+                time_t end = mktime(&endTm);
+                if (start == -1 || end == -1 || start > end) {
+                    printf("Error: Invalid date range.\n");
+                    waitForEnter();
+                    break;
+                }
+                filterTransactionsByDate(accNo, start, end);
+                break;
+            }
+            case 3: {
+                char type[20];
+                printf("Enter transaction type (Deposit/Withdraw/Interest/Loan/Repayment): ");
+                scanf("%s", type);
+                if (strcmp(type, "Deposit") == 0 || strcmp(type, "Withdraw") == 0 ||
+                    strcmp(type, "Interest") == 0 || strcmp(type, "Loan") == 0 ||
+                    strcmp(type, "Repayment") == 0) {
+                    if (strcmp(type, "Interest") == 0) {
+                        filterTransactionsByType(accNo, "Interest Applied");
+                    } else if (strcmp(type, "Loan") == 0) {
+                        filterTransactionsByType(accNo, "Loan Taken");
+                    } else if (strcmp(type, "Repayment") == 0) {
+                        filterTransactionsByType(accNo, "Loan Repayment");
+                    } else {
+                        filterTransactionsByType(accNo, type);
+                    }
+                } else {
+                    printf("Invalid transaction type.\n");
+                    waitForEnter();
+                }
+                break;
+            }
+            case 4:
+                showTransactionSummary(accNo);
+                break;
+            case 5:
+                printf("Returning to previous menu...\n");
+                waitForEnter();
+                break;
+            default:
+                printf("Invalid option.\n");
+                waitForEnter();
+        }
+    } while (choice != 5);
+}
+
+// Function to create a new account
+void createAccount() {
+    if (accountCount >= MAX_ACCOUNTS) {
+        printf("Error: Maximum account limit reached.\n");
+        waitForEnter();
+        return;
+    }
+
+    printf("\n--- Create New Account ---\n");
+    Account acc;
+    acc.accountNumber = generateAccountNumber();
+    acc.loginAttempts = 0;
+    acc.lastLogin = 0;
+
+    printf("Full Name (max 49 chars): ");
+    clearInputBuffer();
+    fgets(acc.name, sizeof(acc.name), stdin);
+    acc.name[strcspn(acc.name, "\n")] = '\0';
+    if (!isValidString(acc.name, 50)) {
+        printf("Error: Invalid name.\n");
+        waitForEnter();
+        return;
+    }
+
+    printf("Address (max 99 chars): ");
+    fgets(acc.address, sizeof(acc.address), stdin);
+    acc.address[strcspn(acc.address, "\n")] = '\0';
+    if (!isValidString(acc.address, 100)) {
+        printf("Error: Invalid address.\n");
+        waitForEnter();
+        return;
+    }
+
+    do {
+        printf("Phone Number (%d-%d digits): ", MIN_PHONE_LEN, MAX_PHONE_LEN);
+        scanf("%s", acc.phone);
+        if (!isValidPhone(acc.phone)) {
+            printf("Error: Invalid phone number. Use digits only.\n");
+        }
+    } while (!isValidPhone(acc.phone));
+
+    do {
+        printf("Initial Deposit (min %.2f): ", MIN_DEPOSIT);
+        scanf("%f", &acc.balance);
+        if (acc.balance < MIN_DEPOSIT) {
+            printf("Error: Minimum deposit is %.2f.\n", MIN_DEPOSIT);
+        }
+    } while (acc.balance < MIN_DEPOSIT);
+
+    do {
+        printf("Set Password (%d-%d chars, must include upper, lower, digit, special): ", MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
+        scanf("%s", acc.password);
+        if (!isStrongPassword(acc.password)) {
+            printf("Error: Password is not strong enough.\n");
+        }
+    } while (!isStrongPassword(acc.password));
+
+    acc.loanAmount = 0.0;
+    acc.interest = 0.0;
+    acc.creationDate = time(NULL);
+
+    accounts[accountCount++] = acc;
+    saveAccountsToFile();
+    logTransaction(acc.accountNumber, "Account Creation", acc.balance);
+
+    printf("\nAccount created successfully!\n");
+    printf("Your Account Number is: %d\n", acc.accountNumber);
+    waitForEnter();
+}
+
+// Function to recover password
+void recoverPassword() {
+    int accNo;
+    char phone[15];
+    printf("\n--- Password Recovery ---\n");
+    printf("Enter Account Number: ");
+    scanf("%d", &accNo);
+    printf("Enter Phone Number: ");
+    scanf("%s", phone);
+
+    int index = -1;
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNo && strcmp(accounts[i].phone, phone) == 0) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1) {
+        printf("Error: Account number or phone number does not match.\n");
+        waitForEnter();
+        return;
+    }
+
+    char newPassword[20];
+    do {
+        printf("Enter new password (%d-%d chars, must include upper, lower, digit, special): ", MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
+        scanf("%s", newPassword);
+        if (!isStrongPassword(newPassword)) {
+            printf("Error: Password is not strong enough.\n");
+        }
+    } while (!isStrongPassword(newPassword));
+
+    strncpy(accounts[index].password, newPassword, sizeof(accounts[index].password) - 1);
+    accounts[index].password[sizeof(accounts[index].password) - 1] = '\0';
+    accounts[index].loginAttempts = 0;
+    saveAccountsToFile();
+    logTransaction(accNo, "Password Reset", 0.0);
+    printf("Password reset successfully.\n");
+    waitForEnter();
+}
+
+// Function to handle user login
+int login() {
+    int accNo;
+    char password[20];
+    printf("\n--- Login ---\n");
+    printf("Account Number: ");
+    scanf("%d", &accNo);
+    printf("Password: ");
+    scanf("%s", password);
+
+    int index = authenticate(accNo, password);
+    if (index != -1) {
+        logLoginAttempt(accNo, "Success");
+        printf("Login successful. Welcome, %s!\n", accounts[index].name);
+        waitForEnter();
+        return index;
+    } else {
+        logLoginAttempt(accNo, "Failed");
+        printf("Login failed. Invalid credentials.\n");
+        waitForEnter();
+        return -1;
+    }
+}
+
 
 
 // Function to update account details
