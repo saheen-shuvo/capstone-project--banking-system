@@ -385,6 +385,60 @@ void showTransactionSummary(int accNo) {
 }
 
 
+
+// Function to view interest rate history
+void viewInterestRateHistory() {
+    printf("\n--- Interest Rate History ---\n");
+    if (rateHistoryCount == 0) {
+        printf("No interest rate changes recorded.\n");
+    } else {
+        for (int i = 0; i < rateHistoryCount; i++) {
+            printf("Rate: %.2f%% | Changed on: %s\n", rateHistory[i].rate, getTimeString(rateHistory[i].timestamp));
+        }
+    }
+    waitForEnter();
+}
+
+// Function to manage loans
+void loanSection(int index) {
+    printf("\n--- Loan Management ---\n");
+    printf("Current Loan: %.2f\n", accounts[index].loanAmount);
+    printf("1. Apply for Loan\n2. Repay Loan\n3. Back\n");
+    int choice;
+    scanf("%d", &choice);
+
+    if (choice == 1) {
+        float loan;
+        printf("Enter loan amount (max %.2f): ", MAX_LOAN_AMOUNT);
+        scanf("%f", &loan);
+        if (loan <= 0 || loan + accounts[index].loanAmount > MAX_LOAN_AMOUNT) {
+            printf("Error: Invalid loan amount or exceeds maximum limit.\n");
+        } else {
+            accounts[index].loanAmount += loan;
+            accounts[index].balance += loan;
+            saveAccountsToFile();
+            logTransaction(accounts[index].accountNumber, "Loan Taken", loan);
+            printf("Loan granted. Total Loan: %.2f\n", accounts[index].loanAmount);
+        }
+    } else if (choice == 2) {
+        float repayment;
+        printf("Enter repayment amount: ");
+        scanf("%f", &repayment);
+        if (repayment <= 0 || repayment > accounts[index].loanAmount) {
+            printf("Error: Invalid repayment amount.\n");
+        } else if (repayment > accounts[index].balance) {
+            printf("Error: Insufficient balance to repay.\n");
+        } else {
+            accounts[index].loanAmount -= repayment;
+            accounts[index].balance -= repayment;
+            saveAccountsToFile();
+            logTransaction(accounts[index].accountNumber, "Loan Repayment", repayment);
+            printf("Repayment successful. Remaining Loan: %.2f\n", accounts[index].loanAmount);
+        }
+    }
+    waitForEnter();
+}
+
 // Function to close an account
 void closeAccount(int index) {
     if (accounts[index].loanAmount > 0) {
