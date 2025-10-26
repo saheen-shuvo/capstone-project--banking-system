@@ -112,6 +112,79 @@ int isStrongPassword(const char* password) {
     return hasUpper && hasLower && hasDigit && hasSpecial;
 }
 
+
+// Function to handle admin login
+int adminLogin() {
+    char username[20], password[20];
+    printf("\n--- Admin Login ---\n");
+    printf("Username: ");
+    scanf("%s", username);
+    printf("Password: ");
+    scanf("%s", password);
+
+    if (strcmp(username, "admin") == 0 && strcmp(password, "admin123") == 0) {
+        logLoginAttempt(0, "Admin Success");
+        printf("Admin login successful.\n");
+        waitForEnter();
+        return 1;
+    }
+    logLoginAttempt(0, "Admin Failed");
+    printf("Invalid admin credentials.\n");
+    waitForEnter();
+    return 0;
+}
+
+// Function to show all accounts
+void showAllAccounts() {
+    printf("\n--- All Bank Accounts ---\n");
+    if (accountCount == 0) {
+        printf("No accounts available.\n");
+    } else {
+        for (int i = 0; i < accountCount; i++) {
+            Account a = accounts[i];
+            printf("\nAccount No: %d\n", a.accountNumber);
+            printf("Name      : %s\n", a.name);
+            printf("Address   : %s\n", a.address);
+            printf("Phone     : %s\n", a.phone);
+            printf("Balance   : %.2f\n", a.balance);
+            printf("Loan Amt  : %.2f\n", a.loanAmount);
+            printf("Created   : %s\n", getTimeString(a.creationDate));
+            printf("Last Login: %s\n", a.lastLogin ? getTimeString(a.lastLogin) : "Never");
+        }
+    }
+    waitForEnter();
+}
+
+// Function to remove an account by admin
+void removeAccountByAdmin() {
+    int accNo;
+    printf("\nEnter Account Number to Remove: ");
+    scanf("%d", &accNo);
+
+    int found = 0;
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNo) {
+            if (accounts[i].loanAmount > 0) {
+                printf("Error: Cannot remove account with outstanding loan of %.2f.\n", accounts[i].loanAmount);
+            } else {
+                for (int j = i; j < accountCount - 1; j++) {
+                    accounts[j] = accounts[j + 1];
+                }
+                accountCount--;
+                saveAccountsToFile();
+                logTransaction(accNo, "Account Removed by Admin", 0.0);
+                printf("Account %d removed successfully.\n", accNo);
+            }
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        printf("Account not found.\n");
+    }
+    waitForEnter();
+}
+
 // Function to view login history
 void viewLoginHistory() {
     FILE* fp = fopen("login_history.txt", "r");
