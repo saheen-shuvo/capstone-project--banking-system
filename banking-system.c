@@ -112,6 +112,121 @@ int isStrongPassword(const char* password) {
     return hasUpper && hasLower && hasDigit && hasSpecial;
 }
 
+// Function to generate unique account number
+int generateAccountNumber() {
+    static int base = 1000;
+    return base + accountCount;
+}
+
+// Function to pause and wait for user input
+void waitForEnter() {
+    printf("\nPress Enter to continue...");
+    clearInputBuffer();
+    getchar();
+}
+
+// Function to get current timestamp as string
+char* getTimeString(time_t timestamp) {
+    static char timeStr[26];
+    char* result = ctime(&timestamp);
+    strncpy(timeStr, result, 26);
+    timeStr[24] = '\0'; // Remove newline
+    return timeStr;
+}
+
+// Custom function to parse date in YYYY-MM-DD format
+int parseDate(const char* dateStr, struct tm* tm) {
+    int year, month, day;
+    if (sscanf(dateStr, "%d-%d-%d", &year, &month, &day) != 3) {
+        return 0; // Invalid format
+    }
+    if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return 0; // Invalid date
+    }
+    tm->tm_year = year - 1900;
+    tm->tm_mon = month - 1;
+    tm->tm_mday = day;
+    tm->tm_hour = 0;
+    tm->tm_min = 0;
+    tm->tm_sec = 0;
+    tm->tm_isdst = -1; // Let mktime determine DST
+    return 1;
+}
+
+// Function to authenticate user credentials
+int authenticate(int accNo, const char* password) {
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNo) {
+            if (accounts[i].loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+                printf("Account is locked due to too many failed login attempts.\n");
+                return -1;
+            }
+            if (strcmp(accounts[i].password, password) == 0) {
+                accounts[i].loginAttempts = 0; // Reset attempts on success
+                accounts[i].lastLogin = time(NULL);
+                saveAccountsToFile();
+                return i;
+            } else {
+                accounts[i].loginAttempts++;
+                saveAccountsToFile();
+                return -1;
+            }
+        }
+    }
+    return -1;
+}
+
+// Function to log login attempts
+void logLoginAttempt(int accNo, const char* status) {
+    if (loginHistoryCount >= 1000) return;
+    LoginHistory lh;
+    lh.accountNumber = accNo;
+    strncpy(lh.status, status, sizeof(lh.status) - 1);
+    lh.status[sizeof(lh.status) - 1] = '\0';
+    lh.timestamp = time(NULL);
+    loginHistory[loginHistoryCount++] = lh;
+
+    FILE* fp = fopen("login_history.txt", "a");
+    if (fp == NULL) return;
+    fprintf(fp, "Acc#%d | %s | %s\n", accNo, status, getTimeString(lh.timestamp));
+    fclose(fp);
+}
+
+// Function to save accounts to file
+void saveAccountsToFile() {
+    FILE* fp = fopen("accounts.dat", "wb");
+    if (fp == NULL) {
+        printf("Error: Cannot open accounts file for writing.\n");
+        return;
+    }
+    fwrite(&accountCount, sizeof(int), 1, fp);
+    fwrite(accounts, sizeof(Account), accountCount, fp);
+    fwrite(&INTEREST_RATE, sizeof(float), 1, fp);
+    fwrite(&rateHistoryCount, sizeof(int), 1, fp);
+    fwrite(rateHistory, sizeof(InterestRateHistory), rateHistoryCount, fp);
+    fclose(fp);
+}
+
+// Function to load accounts from file
+void loadAccountsFromFile() {
+    FILE* fp = fopen("accounts.dat", "rb");
+    if (fp != NULL) {
+        fread(&accountCount, sizeof(int), 1, fp);
+        if (accountCount > MAX_ACCOUNTS) {
+            printf("Error: Account count exceeds maximum limit.\n");
+            accountCount = 0;
+            fclose(fp);
+            return;
+        }
+        fread(accounts, sizeof(Account), accountCount, fp);
+        fread(&INTEREST_RATE, sizeof(float), 1, fp);
+        fread(&rateHistoryCount, sizeof(int), 1, fp);
+        if (rateHistoryCount > 100) rateHistoryCount = 0;
+        fread(rateHistory, sizeof(InterestRateHistory), rateHistoryCount, fp);
+        fclose(fp);
+    }
+}
+
 
 // Function to handle admin login
 int adminLogin() {
