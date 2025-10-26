@@ -36,6 +36,52 @@ typedef struct {
     time_t lastLogin;
 } Account;
 
+// Structure to hold transaction details
+typedef struct {
+    int accountNumber;
+    char type[20];
+    float amount;
+    time_t timestamp;
+} Transaction;
+
+// Structure to hold interest rate history
+typedef struct {
+    float rate;
+    time_t timestamp;
+} InterestRateHistory;
+
+// Structure to hold login history
+typedef struct {
+    int accountNumber;
+    char status[20]; // "Success" or "Failed"
+    time_t timestamp;
+} LoginHistory;
+
+Account accounts[MAX_ACCOUNTS];
+Transaction transactions[MAX_TRANSACTIONS];
+InterestRateHistory rateHistory[100];
+LoginHistory loginHistory[1000];
+int accountCount = 0;
+int transactionCount = 0;
+int rateHistoryCount = 0;
+int loginHistoryCount = 0;
+
+// Function to view login history
+void viewLoginHistory() {
+    FILE* fp = fopen("login_history.txt", "r");
+    if (!fp) {
+        printf("No login history found.\n");
+        waitForEnter();
+        return;
+    }
+    printf("\n--- Login History ---\n");
+    char line[200];
+    while (fgets(line, sizeof(line), fp)) {
+        printf("%s", line);
+    }
+    fclose(fp);
+    waitForEnter();
+}
 
 // Function to display admin menu
 void adminMenu() {
