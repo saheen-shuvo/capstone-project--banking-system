@@ -228,6 +228,59 @@ void loadAccountsFromFile() {
 }
 
 
+// Function to close an account
+void closeAccount(int index) {
+    if (accounts[index].loanAmount > 0) {
+        printf("Error: Cannot close account with outstanding loan of %.2f.\n", accounts[index].loanAmount);
+        waitForEnter();
+        return;
+    }
+    int accNo = accounts[index].accountNumber;
+    for (int i = index; i < accountCount - 1; i++) {
+        accounts[i] = accounts[i + 1];
+    }
+    accountCount--;
+    saveAccountsToFile();
+    logTransaction(accNo, "Account Closed", 0.0);
+    printf("Account %d has been closed.\n", accNo);
+    waitForEnter();
+}
+
+// Function to view transaction history
+void viewHistory(int index) {
+    showTransactionHistory(accounts[index].accountNumber);
+}
+
+// Function to display logged-in user menu
+void loggedInMenu(int index) {
+    int choice;
+    do {
+        printf("\n=== Welcome %s (Acc# %d) ===\n", accounts[index].name, accounts[index].accountNumber);
+        printf("1. Deposit Money\n");
+        printf("2. Withdraw Money\n");
+        printf("3. Check Balance\n");
+        printf("4. Update Details\n");
+        printf("5. View Transaction History\n");
+        printf("6. Loan Management\n");
+        printf("7. Close Account\n");
+        printf("8. Logout\n");
+        printf("Choose an option: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: depositMoney(index); break;
+            case 2: withdrawMoney(index); break;
+            case 3: checkBalance(index); break;
+            case 4: updateDetails(index); break;
+            case 5: viewHistory(index); break;
+            case 6: loanSection(index); break;
+            case 7: closeAccount(index); return;
+            case 8: printf("Logging out...\n"); waitForEnter(); break;
+            default: printf("Invalid option.\n"); waitForEnter();
+        }
+    } while (choice != 8);
+}
+
 // Function to handle admin login
 int adminLogin() {
     char username[20], password[20];
