@@ -386,6 +386,82 @@ void showTransactionSummary(int accNo) {
 
 
 
+// Function to update account details
+void updateDetails(int index) {
+    printf("\n--- Update Account Details ---\n");
+    clearInputBuffer();
+    printf("New Name (max 49 chars, press Enter to keep current): ");
+    char temp[50];
+    fgets(temp, sizeof(temp), stdin);
+    temp[strcspn(temp, "\n")] = '\0';
+    if (strlen(temp) > 0 && isValidString(temp, 50)) {
+        strncpy(accounts[index].name, temp, sizeof(accounts[index].name) - 1);
+        accounts[index].name[sizeof(accounts[index].name) - 1] = '\0';
+    }
+
+    printf("New Address (max 99 chars, press Enter to keep current): ");
+    fgets(temp, sizeof(temp), stdin);
+    temp[strcspn(temp, "\n")] = '\0';
+    if (strlen(temp) > 0 && isValidString(temp, 100)) {
+        strncpy(accounts[index].address, temp, sizeof(accounts[index].address) - 1);
+        accounts[index].address[sizeof(accounts[index].address) - 1] = '\0';
+    }
+
+    printf("New Phone (%d-%d digits, press Enter to keep current): ", MIN_PHONE_LEN, MAX_PHONE_LEN);
+    fgets(temp, sizeof(temp), stdin);
+    temp[strcspn(temp, "\n")] = '\0';
+    if (strlen(temp) > 0) {
+        if (isValidPhone(temp)) {
+            strncpy(accounts[index].phone, temp, sizeof(accounts[index].phone) - 1);
+            accounts[index].phone[sizeof(accounts[index].phone) - 1] = '\0';
+        } else {
+            printf("Error: Invalid phone number. Keeping current phone number.\n");
+        }
+    }
+
+    saveAccountsToFile();
+    logTransaction(accounts[index].accountNumber, "Details Updated", 0.0);
+    printf("Details updated successfully.\n");
+    waitForEnter();
+}
+
+// Function to apply interest to all accounts
+void applyInterest() {
+    for (int i = 0; i < accountCount; i++) {
+        float interest = accounts[i].balance * INTEREST_RATE;
+        accounts[i].balance += interest;
+        accounts[i].interest += interest;
+        logTransaction(accounts[i].accountNumber, "Interest Applied", interest);
+    }
+    saveAccountsToFile();
+    printf("%.2f%% interest applied to all accounts.\n", INTEREST_RATE * 100);
+    waitForEnter();
+}
+
+// Function to set interest rate
+void setInterestRate() {
+    float newRate;
+    printf("\n--- Set Interest Rate ---\n");
+    printf("Current Interest Rate: %.2f%%\n", INTEREST_RATE * 100);
+    printf("Enter new interest rate (as percentage, e.g., 3.5 for 3.5%%): ");
+    scanf("%f", &newRate);
+
+    if (newRate <= 0 || newRate > 100) {
+        printf("Error: Invalid interest rate. Must be between 0 and 100%%.\n");
+    } else {
+        INTEREST_RATE = newRate / 100.0f;
+        if (rateHistoryCount < 100) {
+            rateHistory[rateHistoryCount].rate = newRate;
+            rateHistory[rateHistoryCount].timestamp = time(NULL);
+            rateHistoryCount++;
+        }
+        saveAccountsToFile();
+        logTransaction(0, "Interest Rate Changed", newRate);
+        printf("Interest rate updated to %.2f%%\n", newRate);
+    }
+    waitForEnter();
+}
+
 // Function to view interest rate history
 void viewInterestRateHistory() {
     printf("\n--- Interest Rate History ---\n");
